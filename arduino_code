@@ -1,0 +1,96 @@
+// light up neopixels on the half of the CPX that corresponds with the sensor with the highest value
+
+#include <Adafruit_CircuitPlayground.h>
+
+#define sensorA_Pin A4
+#define sensorA_firstNeopixel 0
+#define sensorA_lastNeopixel 4
+#define sensorB_Pin A0
+#define sensorB_firstNeopixel 5
+#define sensorB_lastNeopixel 9
+
+// volume value
+float volume; 
+// pressure values
+int sensorA_ValueLow = 600;
+int sensorA_ValueHigh = 1023;
+int sensorB_ValueLow = 600;
+int sensorB_ValueHigh = 1023;
+
+int sensorA_value;
+int sensorA_value_constrained;
+int sensorA_value_mapped;
+int sensorB_value;
+int sensorB_value_constrained;
+int sensorB_value_mapped;
+
+// light pressure threshold
+const int sensorLight_threshold = 600; 
+
+// light sound threshold 
+const int sensorVolume_threshold = 80; 
+
+void setup() {
+  Serial.begin(9600);
+  CircuitPlayground.begin();
+}
+
+void loop() {
+  CircuitPlayground.clearPixels();
+
+  // Audio capture for red light warning
+  volume = CircuitPlayground.mic.soundPressureLevel(10);
+
+  Serial.print("Sound Sensor SPL: ");
+  Serial.println(volume);
+
+  // pressure value for left arm, also gauges how much pressure and how many LEDs must be lite to show that
+  sensorA_value = analogRead(sensorA_Pin);
+  sensorA_value_constrained = constrain(sensorA_value, sensorA_ValueLow, sensorA_ValueHigh);
+  sensorA_value_mapped = map(sensorA_value_constrained, sensorA_ValueLow, sensorA_ValueHigh, sensorA_firstNeopixel, sensorA_lastNeopixel);
+  Serial.print(" Sensor A: ");
+  Serial.print(sensorA_value);
+  Serial.print("\t Constrained A: ");
+  Serial.print(sensorA_value_constrained);
+  Serial.print("\t Mapped A: ");
+  Serial.print(sensorA_value_mapped);
+  Serial.print("\t\t");
+
+  // pressure value for right arm, also gauges how much pressure and how many LEDs must be lite to show that
+  sensorB_value = analogRead(sensorB_Pin);
+  sensorB_value_constrained = constrain(sensorB_value, sensorB_ValueLow, sensorB_ValueHigh);
+  sensorB_value_mapped = map(sensorB_value_constrained, sensorB_ValueLow, sensorB_ValueHigh, sensorB_firstNeopixel, sensorB_lastNeopixel);
+  Serial.print("Sensor B: ");
+  Serial.print(sensorB_value);
+  Serial.print("\t Constrained B: ");
+  Serial.print(sensorB_value_constrained);
+  Serial.print("\t Mapped B: ");
+  Serial.print(sensorB_value_mapped);
+
+
+  // Red light alert checker, takes priority over rest
+  if (volume >= sensorVolume_threshold) { 
+    for (int i = sensorA_firstNeopixel; i <= sensorB_lastNeopixel; i++) {
+      CircuitPlayground.setPixelColor(i, 0xFF0000); 
+    }
+  } else { 
+    // left arm light threshold checker
+    if (sensorA_value >= sensorLight_threshold) {
+      for (int i = sensorA_firstNeopixel; i <= sensorA_value_mapped; i++) {
+        CircuitPlayground.setPixelColor(i, 0xFF00FF);
+      } 
+    } else {
+        CircuitPlayground.clearPixels();
+    }
+    // right arm light threshold checker
+    if (sensorB_value >= sensorLight_threshold) {
+      for (int i = sensorB_firstNeopixel; i <= sensorB_value_mapped; i++) {
+        CircuitPlayground.setPixelColor(i, 0xFF00FF);
+      } 
+    } else {
+      CircuitPlayground.clearPixels();
+    }
+  }
+
+  delay(100);
+}
